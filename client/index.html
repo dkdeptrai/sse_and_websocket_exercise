@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Server Time and Connections</title>
+</head>
+<body>
+  <h1>Server Time and Connections</h1>
+  <p>
+    <label for="connection-type">Choose Connection Type:</label>
+    <select id="connection-type">
+      <option value="sse">SSE</option>
+      <option value="websocket">WebSocket</option>
+    </select>
+  </p>
+
+  <p id="time">Server Time: N/A</p>
+  <p id="connections">Connections: N/A</p>
+
+  <script>
+    const timeElement = document.getElementById("time");
+    const connectionsElement = document.getElementById("connections");
+    const connectionTypeElement = document.getElementById("connection-type");
+
+    let eventSource = null;
+    let socket = null;
+
+    function clearPreviousConnection() {
+      if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+      }
+      if (socket) {
+        socket.close();
+        socket = null;
+      }
+    }
+
+    function setupSSE() {
+      clearPreviousConnection();
+      eventSource = new EventSource("http://localhost:3000/events");
+
+      eventSource.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        timeElement.textContent = `Server Time: ${data.time}`;
+        connectionsElement.textContent = `Connections: ${data.connections}`;
+      };
+
+      eventSource.onerror = () => {
+        timeElement.textContent = "Server Time: Connection lost (SSE)";
+        connectionsElement.textContent = "Connections: N/A";
+      };
+    }
+
+    function setupWebSocket() {
+      clearPreviousConnection();
+      socket = new WebSocket("ws://localhost:3001");
+
+      socket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        timeElement.textContent = `Server Time: ${data.time}`;
+        connectionsElement.textContent = `Connections: ${data.connections}`;
+      };
+
+      socket.onerror = () => {
+        timeElement.textContent = "Server Time: Connection error (WebSocket)";
+        connectionsElement.textContent = "Connections: N/A";
+      };
+
+      socket.onclose = () => {
+        timeElement.textContent = "Server Time: Connection closed (WebSocket)";
+        connectionsElement.textContent = "Connections: N/A";
+      };
+    }
+
+    connectionTypeElement.addEventListener("change", () => {
+      const selectedType = connectionTypeElement.value;
+      if (selectedType === "sse") {
+        setupSSE();
+      } else if (selectedType === "websocket") {
+        setupWebSocket();
+      }
+    });
+
+    setupSSE();
+  </script>
+</body>
+</html>
